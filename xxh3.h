@@ -1067,12 +1067,13 @@ XXH3_initCustomSecret_avx512(void* XXH_RESTRICT customSecret, xxh_u64 seed64)
         XXH_ALIGN(64)       __m512i* const dest = (      __m512i*) customSecret;
         int i;
         for (i=0; i < nbRounds; ++i) {
-            // GCC has a bug, _mm512_stream_load_si512 accepts 'void*', not 'void const*',
-            // this will warn "discards ‘const’ qualifier".
+            /* GCC has a bug, _mm512_stream_load_si512 accepts 'void*', not 'void const*',
+             * this will warn "discards ‘const’ qualifier". */
             union {
-                XXH_ALIGN(64) const __m512i* const cp;
-                XXH_ALIGN(64) void* const p;
-            } const remote_const_void = { .cp = src + i };
+                XXH_ALIGN(64) const __m512i* cp;
+                XXH_ALIGN(64) void* p;
+            } remote_const_void;
+            remote_const_void.cp = src + i;
             dest[i] = _mm512_add_epi64(_mm512_stream_load_si512(remote_const_void.p), seed);
     }   }
 }
@@ -2275,7 +2276,7 @@ XXH3_len_9to16_128b(const xxh_u8* input, size_t len, const xxh_u8* secret, XXH64
              * On 32-bit, it removes an ADC and delays a dependency between the two
              * halves of m128.high64, but it generates an extra mask on 64-bit.
              */
-            m128.high64 += (input_hi & 0xFFFFFFFF00000000) + XXH_mult32to64((xxh_u32)input_hi, XXH_PRIME32_2);
+            m128.high64 += (input_hi & 0xFFFFFFFF00000000ULL) + XXH_mult32to64((xxh_u32)input_hi, XXH_PRIME32_2);
         } else {
             /*
              * 64-bit optimized (albeit more confusing) version.
